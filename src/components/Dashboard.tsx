@@ -1,16 +1,12 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { TodoList } from "./TodoList";
-import { JournalSection } from "./JournalSection";
-import { AIChatbox } from "./AIChatbox";
-import { CheckCircle, Target, TrendingUp, Calendar, MessageSquare, BookOpen } from "lucide-react";
+import { Navigation } from "./Navigation";
+import { CheckCircle, Target, TrendingUp, Calendar, MessageSquare, BookOpen, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-dashboard.jpg";
 
 const Dashboard = () => {
-  const [activeSection, setActiveSection] = useState<'todos' | 'journal' | 'chat'>('todos');
-  
   const stats = {
     tasksCompleted: 12,
     totalTasks: 18,
@@ -20,6 +16,9 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-surface to-surface-elevated">
+      {/* Navigation */}
+      <Navigation />
+      
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div 
@@ -29,7 +28,7 @@ const Dashboard = () => {
         <div className="relative z-10 container mx-auto px-4 py-8">
           <div className="text-center mb-8">
             <h1 className="text-4xl md:text-6xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">
-              Tracky
+              Welcome to Tracky
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
               Your futuristic productivity companion designed for engineering excellence
@@ -109,46 +108,62 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="container mx-auto px-4 mb-6">
-        <div className="flex justify-center">
-          <div className="glass rounded-xl p-2 inline-flex gap-2">
-            <Button
-              variant={activeSection === 'todos' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveSection('todos')}
-              className="flex items-center gap-2"
-            >
-              <CheckCircle className="h-4 w-4" />
-              Tasks
-            </Button>
-            <Button
-              variant={activeSection === 'journal' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveSection('journal')}
-              className="flex items-center gap-2"
-            >
-              <BookOpen className="h-4 w-4" />
-              Journal
-            </Button>
-            <Button
-              variant={activeSection === 'chat' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveSection('chat')}
-              className="flex items-center gap-2"
-            >
-              <MessageSquare className="h-4 w-4" />
-              AI Assistant
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
+      {/* Quick Actions */}
       <div className="container mx-auto px-4 pb-8">
-        {activeSection === 'todos' && <TodoList />}
-        {activeSection === 'journal' && <JournalSection />}
-        {activeSection === 'chat' && <AIChatbox />}
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
+          <p className="text-muted-foreground">Jump into your productivity tools</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <Card className="glass-elevated card-3d group">
+            <CardContent className="p-6 text-center">
+              <CheckCircle className="h-12 w-12 text-primary mx-auto mb-4 group-hover:scale-110 transition-transform duration-smooth" />
+              <h3 className="text-lg font-semibold mb-2">Manage Tasks</h3>
+              <p className="text-muted-foreground mb-4 text-sm">
+                Organize your daily tasks and boost productivity
+              </p>
+              <Button asChild className="w-full bg-gradient-primary hover:glow-primary transition-all duration-smooth">
+                <Link to="/tasks" className="flex items-center gap-2">
+                  Go to Tasks
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card className="glass-elevated card-3d group">
+            <CardContent className="p-6 text-center">
+              <BookOpen className="h-12 w-12 text-accent mx-auto mb-4 group-hover:scale-110 transition-transform duration-smooth" />
+              <h3 className="text-lg font-semibold mb-2">Personal Journal</h3>
+              <p className="text-muted-foreground mb-4 text-sm">
+                Reflect on your growth and daily experiences
+              </p>
+              <Button asChild className="w-full bg-gradient-accent hover:glow-accent transition-all duration-smooth">
+                <Link to="/journal" className="flex items-center gap-2">
+                  Open Journal
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card className="glass-elevated card-3d group">
+            <CardContent className="p-6 text-center">
+              <MessageSquare className="h-12 w-12 text-secondary mx-auto mb-4 group-hover:scale-110 transition-transform duration-smooth" />
+              <h3 className="text-lg font-semibold mb-2">AI Assistant</h3>
+              <p className="text-muted-foreground mb-4 text-sm">
+                Get personalized productivity advice and support
+              </p>
+              <Button asChild className="w-full bg-gradient-secondary hover:glow transition-all duration-smooth">
+                <Link to="/chat" className="flex items-center gap-2">
+                  Start Chat
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
