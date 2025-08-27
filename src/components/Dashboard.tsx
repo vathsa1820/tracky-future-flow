@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Navigation } from "./Navigation";
-import { CheckCircle, Target, TrendingUp, Calendar, MessageSquare, BookOpen, ArrowRight } from "lucide-react";
+import { CheckCircle, Target, TrendingUp, Calendar, MessageSquare, BookOpen, ArrowRight, Brain } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-dashboard.jpg";
 
@@ -115,7 +115,7 @@ const Dashboard = () => {
           <p className="text-muted-foreground">Jump into your productivity tools</p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
           <Card className="glass-elevated card-3d group">
             <CardContent className="p-6 text-center">
               <CheckCircle className="h-12 w-12 text-primary mx-auto mb-4 group-hover:scale-110 transition-transform duration-smooth" />
@@ -126,6 +126,22 @@ const Dashboard = () => {
               <Button asChild className="w-full bg-gradient-primary hover:glow-primary transition-all duration-smooth">
                 <Link to="/tasks" className="flex items-center gap-2">
                   Go to Tasks
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card className="glass-elevated card-3d group">
+            <CardContent className="p-6 text-center">
+              <Brain className="h-12 w-12 text-secondary mx-auto mb-4 group-hover:scale-110 transition-transform duration-smooth" />
+              <h3 className="text-lg font-semibold mb-2">Study Planner</h3>
+              <p className="text-muted-foreground mb-4 text-sm">
+                AI-powered personalized study plans based on your schedule
+              </p>
+              <Button asChild className="w-full bg-gradient-secondary hover:glow transition-all duration-smooth">
+                <Link to="/study-planner" className="flex items-center gap-2">
+                  Create Plan
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>

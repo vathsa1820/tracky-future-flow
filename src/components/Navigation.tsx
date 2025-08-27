@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Home, CheckCircle, BookOpen, MessageSquare } from "lucide-react";
+import { Home, CheckCircle, BookOpen, MessageSquare, Brain } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
 
 export const Navigation = () => {
@@ -9,6 +9,7 @@ export const Navigation = () => {
   const navItems = [
     { path: "/", icon: Home, label: "Dashboard" },
     { path: "/tasks", icon: CheckCircle, label: "Tasks" },
+    { path: "/study-planner", icon: Brain, label: "Study Planner" },
     { path: "/journal", icon: BookOpen, label: "Journal" },
     { path: "/chat", icon: MessageSquare, label: "AI Assistant" }
   ];

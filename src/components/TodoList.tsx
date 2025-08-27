@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Edit3 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Trash2, Edit3, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Todo {
@@ -11,18 +13,24 @@ interface Todo {
   text: string;
   completed: boolean;
   createdAt: Date;
+  dueTime?: string;
+  priority: 'low' | 'medium' | 'high';
 }
 
 export const TodoList = () => {
   const [todos, setTodos] = useState<Todo[]>([
-    { id: '1', text: 'Complete Linear Algebra assignment', completed: true, createdAt: new Date() },
-    { id: '2', text: 'Study for Thermodynamics exam', completed: false, createdAt: new Date() },
-    { id: '3', text: 'Work on team project proposal', completed: false, createdAt: new Date() },
-    { id: '4', text: 'Review Circuit Analysis notes', completed: false, createdAt: new Date() },
+    { id: '1', text: 'Complete Linear Algebra assignment', completed: true, createdAt: new Date(), dueTime: '14:00', priority: 'high' },
+    { id: '2', text: 'Study for Thermodynamics exam', completed: false, createdAt: new Date(), dueTime: '16:30', priority: 'high' },
+    { id: '3', text: 'Work on team project proposal', completed: false, createdAt: new Date(), dueTime: '10:00', priority: 'medium' },
+    { id: '4', text: 'Review Circuit Analysis notes', completed: false, createdAt: new Date(), dueTime: '20:00', priority: 'low' },
   ]);
   const [newTodo, setNewTodo] = useState('');
+  const [newDueTime, setNewDueTime] = useState('');
+  const [newPriority, setNewPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
+  const [editDueTime, setEditDueTime] = useState('');
+  const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const { toast } = useToast();
 
   const addTodo = () => {
@@ -32,11 +40,15 @@ export const TodoList = () => {
       id: Date.now().toString(),
       text: newTodo.trim(),
       completed: false,
-      createdAt: new Date()
+      createdAt: new Date(),
+      dueTime: newDueTime || undefined,
+      priority: newPriority
     };
     
     setTodos([todo, ...todos]);
     setNewTodo('');
+    setNewDueTime('');
+    setNewPriority('medium');
     toast({
       title: "Task Added",
       description: "Your new task has been added to the list.",
@@ -68,16 +80,25 @@ export const TodoList = () => {
   const startEdit = (todo: Todo) => {
     setEditingId(todo.id);
     setEditText(todo.text);
+    setEditDueTime(todo.dueTime || '');
+    setEditPriority(todo.priority);
   };
 
   const saveEdit = () => {
     if (!editText.trim()) return;
     
     setTodos(todos.map(todo =>
-      todo.id === editingId ? { ...todo, text: editText.trim() } : todo
+      todo.id === editingId ? { 
+        ...todo, 
+        text: editText.trim(),
+        dueTime: editDueTime || undefined,
+        priority: editPriority
+      } : todo
     ));
     setEditingId(null);
     setEditText('');
+    setEditDueTime('');
+    setEditPriority('medium');
     toast({
       title: "Task Updated",
       description: "Your task has been successfully updated.",
@@ -85,12 +106,47 @@ export const TodoList = () => {
   };
 
   const completedCount = todos.filter(todo => todo.completed).length;
+  
+  const getPriorityColor = (priority: 'low' | 'medium' | 'high') => {
+    switch (priority) {
+      case 'high': return 'bg-destructive text-destructive-foreground';
+      case 'medium': return 'bg-accent text-accent-foreground';
+      case 'low': return 'bg-muted text-muted-foreground';
+    }
+  };
+  
+  const isOverdue = (dueTime?: string) => {
+    if (!dueTime) return false;
+    const now = new Date();
+    const [hours, minutes] = dueTime.split(':').map(Number);
+    const dueDate = new Date();
+    dueDate.setHours(hours, minutes, 0, 0);
+    return now > dueDate;
+  };
+  
+  // Sort todos by priority and due time
+  const sortedTodos = [...todos].sort((a, b) => {
+    if (a.completed !== b.completed) {
+      return a.completed ? 1 : -1;
+    }
+    
+    const priorityOrder = { high: 3, medium: 2, low: 1 };
+    if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+      return priorityOrder[b.priority] - priorityOrder[a.priority];
+    }
+    
+    if (a.dueTime && b.dueTime) {
+      return a.dueTime.localeCompare(b.dueTime);
+    }
+    
+    return 0;
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Add New Task */}
       <Card className="glass-elevated card-3d">
-        <CardContent className="p-6">
+        <CardContent className="p-6 space-y-4">
           <div className="flex gap-3">
             <Input
               placeholder="Add a new task..."
@@ -105,6 +161,30 @@ export const TodoList = () => {
             >
               <Plus className="h-4 w-4" />
             </Button>
+          </div>
+          
+          <div className="flex gap-3">
+            <div className="flex items-center gap-2 flex-1">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Input
+                type="time"
+                placeholder="Due time (optional)"
+                value={newDueTime}
+                onChange={(e) => setNewDueTime(e.target.value)}
+                className="bg-surface/50 border-glass-border"
+              />
+            </div>
+            
+            <Select value={newPriority} onValueChange={(value: 'low' | 'medium' | 'high') => setNewPriority(value)}>
+              <SelectTrigger className="w-32 bg-surface/50 border-glass-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -124,15 +204,15 @@ export const TodoList = () => {
 
       {/* Todo Items */}
       <div className="space-y-3">
-        {todos.map((todo) => (
+        {sortedTodos.map((todo) => (
           <Card 
             key={todo.id} 
             className={`glass card-3d transition-all duration-smooth ${
               todo.completed ? 'opacity-75' : ''
-            }`}
+            } ${isOverdue(todo.dueTime) && !todo.completed ? 'ring-2 ring-destructive/50' : ''}`}
           >
             <CardContent className="p-4">
-              <div className="flex items-center gap-3">
+              <div className="flex items-start gap-3">
                 <Checkbox
                   checked={todo.completed}
                   onCheckedChange={() => toggleTodo(todo.id)}
@@ -140,7 +220,7 @@ export const TodoList = () => {
                 />
                 
                 {editingId === todo.id ? (
-                  <div className="flex-1 flex gap-2">
+                  <div className="flex-1 space-y-3">
                     <Input
                       value={editText}
                       onChange={(e) => setEditText(e.target.value)}
@@ -148,22 +228,63 @@ export const TodoList = () => {
                       className="bg-surface/50 border-glass-border"
                       autoFocus
                     />
-                    <Button size="sm" onClick={saveEdit}>Save</Button>
-                    <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>
-                      Cancel
-                    </Button>
+                    <div className="flex gap-2">
+                      <Input
+                        type="time"
+                        value={editDueTime}
+                        onChange={(e) => setEditDueTime(e.target.value)}
+                        className="bg-surface/50 border-glass-border"
+                      />
+                      <Select value={editPriority} onValueChange={(value: 'low' | 'medium' | 'high') => setEditPriority(value)}>
+                        <SelectTrigger className="w-32 bg-surface/50 border-glass-border">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={saveEdit}>Save</Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>
+                        Cancel
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <>
-                    <span 
-                      className={`flex-1 ${
-                        todo.completed 
-                          ? 'line-through text-muted-foreground' 
-                          : 'text-foreground'
-                      }`}
-                    >
-                      {todo.text}
-                    </span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span 
+                          className={`${
+                            todo.completed 
+                              ? 'line-through text-muted-foreground' 
+                              : 'text-foreground'
+                          }`}
+                        >
+                          {todo.text}
+                        </span>
+                        <Badge className={getPriorityColor(todo.priority)}>
+                          {todo.priority}
+                        </Badge>
+                      </div>
+                      
+                      {todo.dueTime && (
+                        <div className={`flex items-center gap-1 text-sm ${
+                          isOverdue(todo.dueTime) && !todo.completed 
+                            ? 'text-destructive' 
+                            : 'text-muted-foreground'
+                        }`}>
+                          {isOverdue(todo.dueTime) && !todo.completed && (
+                            <AlertCircle className="h-3 w-3" />
+                          )}
+                          <Clock className="h-3 w-3" />
+                          <span>Due: {todo.dueTime}</span>
+                        </div>
+                      )}
+                    </div>
                     
                     <div className="flex gap-2">
                       <Button
