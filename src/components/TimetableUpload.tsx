@@ -18,7 +18,7 @@ interface TimetableData {
 }
 
 interface TimetableUploadProps {
-  onTimetableChange: (timetable: TimetableData | null) => void;
+  onTimetableChange: (timetable: TimetableData | File | null) => void;
 }
 
 export const TimetableUpload = ({ onTimetableChange }: TimetableUploadProps) => {
@@ -26,7 +26,7 @@ export const TimetableUpload = ({ onTimetableChange }: TimetableUploadProps) => 
   const [manualSchedule, setManualSchedule] = useState('');
   const { toast } = useToast();
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -39,24 +39,13 @@ export const TimetableUpload = ({ onTimetableChange }: TimetableUploadProps) => 
       return;
     }
 
-    // Simulate file processing
     toast({
       title: "File Uploaded",
-      description: "Your timetable is being processed. This feature will be enhanced soon!",
+      description: "Your timetable file has been received!",
     });
 
-    // Mock timetable data for demonstration
-    const mockTimetable: TimetableData = {
-      monday: ['Linear Algebra 9:00-10:30', 'Physics Lab 11:00-13:00', 'Programming 14:00-15:30'],
-      tuesday: ['Thermodynamics 9:00-10:30', 'Mathematics 11:00-12:30', 'Circuit Analysis 14:00-15:30'],
-      wednesday: ['Linear Algebra 9:00-10:30', 'Project Work 11:00-13:00'],
-      thursday: ['Thermodynamics 9:00-10:30', 'Programming Lab 11:00-13:00', 'Mathematics 14:00-15:30'],
-      friday: ['Circuit Analysis 9:00-10:30', 'Physics 11:00-12:30', 'Seminar 14:00-15:30'],
-      saturday: ['Study Hall 10:00-12:00'],
-      sunday: ['Free Day']
-    };
-
-    onTimetableChange(mockTimetable);
+    // Pass the actual file to parent component
+    onTimetableChange(file as any);
   };
 
   const handleManualSubmit = () => {

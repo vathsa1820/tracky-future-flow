@@ -28,7 +28,7 @@ interface TimetableData {
 }
 
 export const StudyPlannerSection = () => {
-  const [timetable, setTimetable] = useState<TimetableData | null>(null);
+  const [timetable, setTimetable] = useState<TimetableData | File | null>(null);
   const [studyGoals, setStudyGoals] = useState('');
   const [examDates, setExamDates] = useState('');
   const [studyPlan, setStudyPlan] = useState<StudyPlan[]>([]);
@@ -46,161 +46,128 @@ export const StudyPlannerSection = () => {
     }
 
     setIsGenerating(true);
-    
-    // Simulate AI processing with personalized plan
-    setTimeout(() => {
-      const generatedPlan: StudyPlan[] = [];
-      let idCounter = 1;
 
-      // Extract subjects from timetable or study goals
-      const subjects: string[] = [];
-      
-      if (timetable) {
-        Object.values(timetable).forEach(day => {
-          day.forEach(classItem => {
-            const subjectMatch = classItem.match(/^([^0-9]+)/);
-            if (subjectMatch) {
-              const subject = subjectMatch[1].trim();
-              if (subject && !subjects.includes(subject)) {
-                subjects.push(subject);
+    try {
+      // Check if timetable is a File object (uploaded file)
+      if (timetable instanceof File) {
+        // Use the edge function to analyze the uploaded file
+        const formData = new FormData();
+        formData.append('file', timetable);
+        formData.append('studyGoals', studyGoals);
+        formData.append('examDates', examDates);
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-timetable`,
+          {
+            method: 'POST',
+            body: formData,
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to analyze timetable');
+        }
+
+        const data = await response.json();
+        setStudyPlan(data.studyPlan);
+        
+        toast({
+          title: "Study Plan Generated! 🎉",
+          description: `Created ${data.studyPlan.length} personalized study sessions based on your timetable.`,
+        });
+      } else {
+        // Fallback for manual entry or no file
+        const generatedPlan: StudyPlan[] = [];
+        let idCounter = 1;
+
+        const subjects: string[] = [];
+        
+        if (studyGoals.trim()) {
+          const goalLines = studyGoals.split('\n');
+          goalLines.forEach(line => {
+            const words = line.split(/[,;]/).map(s => s.trim());
+            words.forEach(word => {
+              if (word.length > 3 && !subjects.includes(word)) {
+                subjects.push(word);
               }
-            }
+            });
           });
-        });
-      }
+        }
 
-      // Add subjects from study goals
-      if (studyGoals.trim()) {
-        const goalLines = studyGoals.split('\n');
-        goalLines.forEach(line => {
-          const words = line.split(/[,;]/).map(s => s.trim());
-          words.forEach(word => {
-            if (word.length > 3 && !subjects.includes(word)) {
-              subjects.push(word);
-            }
+        // Generate basic study plan
+        if (subjects.length > 0) {
+          generatedPlan.push({
+            id: String(idCounter++),
+            subject: subjects[0],
+            timeSlot: '08:00 - 09:30',
+            duration: '1.5 hours',
+            activity: 'Morning Study Session',
+            priority: 'high',
+            description: 'Start your day with focused studying on key concepts.'
           });
-        });
-      }
 
-      // Generate morning study session (7:00 - 8:30)
-      if (subjects.length > 0) {
+          if (subjects.length > 1) {
+            generatedPlan.push({
+              id: String(idCounter++),
+              subject: subjects[1],
+              timeSlot: '10:00 - 11:30',
+              duration: '1.5 hours',
+              activity: 'Deep Work Session',
+              priority: 'high',
+              description: 'Focus on challenging topics with active learning.'
+            });
+          }
+        }
+
         generatedPlan.push({
           id: String(idCounter++),
-          subject: subjects[0],
-          timeSlot: '07:00 - 08:30',
-          duration: '1.5 hours',
-          activity: 'Morning Review Session',
-          priority: 'high',
-          description: 'Start your day with focused studying. Review key concepts and solve practice problems.'
-        });
-      }
-
-      // Mid-morning study (9:00 - 10:30)
-      if (subjects.length > 1) {
-        generatedPlan.push({
-          id: String(idCounter++),
-          subject: subjects[1],
-          timeSlot: '09:00 - 10:30',
-          duration: '1.5 hours',
-          activity: 'Deep Work Session',
-          priority: 'high',
-          description: 'Focus on challenging topics. Use active recall and practice problems.'
-        });
-      }
-
-      // Break time (10:30 - 11:00)
-      generatedPlan.push({
-        id: String(idCounter++),
-        subject: 'Break Time',
-        timeSlot: '10:30 - 11:00',
-        duration: '30 minutes',
-        activity: 'Short Break',
-        priority: 'medium',
-        description: 'Take a walk, have a healthy snack, or do light stretching to refresh.'
-      });
-
-      // Pre-lunch study (11:00 - 12:30)
-      if (subjects.length > 2) {
-        generatedPlan.push({
-          id: String(idCounter++),
-          subject: subjects[2],
-          timeSlot: '11:00 - 12:30',
-          duration: '1.5 hours',
-          activity: 'Practice & Application',
-          priority: 'high',
-          description: 'Apply concepts through exercises and real-world problem solving.'
-        });
-      }
-
-      // Afternoon study (14:00 - 15:30)
-      if (subjects.length > 3) {
-        generatedPlan.push({
-          id: String(idCounter++),
-          subject: subjects[3] || subjects[0],
-          timeSlot: '14:00 - 15:30',
-          duration: '1.5 hours',
-          activity: 'Concept Mastery',
+          subject: 'Break',
+          timeSlot: '14:00 - 14:30',
+          duration: '30 minutes',
+          activity: 'Refresh Break',
           priority: 'medium',
-          description: 'Review notes, create mind maps, and strengthen understanding.'
+          description: 'Take a walk or do light exercise to refresh your mind.'
         });
-      }
 
-      // Exercise break (15:30 - 16:00)
-      generatedPlan.push({
-        id: String(idCounter++),
-        subject: 'Physical Activity',
-        timeSlot: '15:30 - 16:00',
-        duration: '30 minutes',
-        activity: 'Exercise Break',
-        priority: 'medium',
-        description: 'Physical activity boosts focus and memory retention. Go for a jog or do a quick workout.'
-      });
+        if (subjects.length > 0) {
+          generatedPlan.push({
+            id: String(idCounter++),
+            subject: subjects[0],
+            timeSlot: '15:00 - 16:30',
+            duration: '1.5 hours',
+            activity: 'Practice & Review',
+            priority: 'medium',
+            description: 'Work on practice problems and review your notes.'
+          });
+        }
 
-      // Late afternoon (16:00 - 17:30)
-      if (subjects.length > 0) {
         generatedPlan.push({
           id: String(idCounter++),
-          subject: subjects[subjects.length > 4 ? 4 : 0],
-          timeSlot: '16:00 - 17:30',
-          duration: '1.5 hours',
-          activity: 'Review & Consolidation',
-          priority: 'medium',
-          description: 'Review what you learned today. Test yourself with flashcards or practice questions.'
-        });
-      }
-
-      // Evening planning (19:00 - 20:00)
-      generatedPlan.push({
-        id: String(idCounter++),
-        subject: 'Daily Review',
-        timeSlot: '19:00 - 20:00',
-        duration: '1 hour',
-        activity: 'Journal & Planning',
-        priority: 'low',
-        description: 'Reflect on today\'s progress, journal your learning, and plan tomorrow\'s priorities.'
-      });
-
-      // Add exam-focused sessions if exam dates provided
-      if (examDates.trim()) {
-        generatedPlan.push({
-          id: String(idCounter++),
-          subject: 'Exam Preparation',
-          timeSlot: '20:00 - 21:00',
+          subject: 'Planning',
+          timeSlot: '19:00 - 20:00',
           duration: '1 hour',
-          activity: 'Exam-Focused Study',
-          priority: 'high',
-          description: `Focus on upcoming exams: ${examDates.slice(0, 50)}. Practice past papers and review key formulas.`
+          activity: 'Daily Review',
+          priority: 'low',
+          description: 'Reflect on what you learned and plan for tomorrow.'
+        });
+
+        setStudyPlan(generatedPlan);
+        
+        toast({
+          title: "Study Plan Generated! 🎉",
+          description: `Created ${generatedPlan.length} study sessions for you.`,
         });
       }
-      
-      setStudyPlan(generatedPlan);
-      setIsGenerating(false);
-      
+    } catch (error) {
+      console.error('Error generating study plan:', error);
       toast({
-        title: "Study Plan Generated! 🎉",
-        description: `Created ${generatedPlan.length} personalized study sessions for you.`,
+        title: "Generation Failed",
+        description: "Failed to generate study plan. Please try again.",
+        variant: "destructive"
       });
-    }, 2500);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const getPriorityColor = (priority: 'high' | 'medium' | 'low') => {
