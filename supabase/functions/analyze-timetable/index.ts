@@ -43,9 +43,17 @@ serve(async (req) => {
 
     if (uploadError) {
       console.error('Upload error:', uploadError);
+      
+      let errorMessage = 'Failed to upload file';
+      if (uploadError.message?.includes('exceeded') || uploadError.statusCode === '413') {
+        errorMessage = 'File is too large. Please upload a file smaller than 25MB.';
+      } else if (uploadError.message?.includes('mime')) {
+        errorMessage = 'Invalid file type. Please upload a PDF or image file.';
+      }
+      
       return new Response(
-        JSON.stringify({ error: 'Failed to upload file' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: errorMessage }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
