@@ -47,73 +47,160 @@ export const StudyPlannerSection = () => {
 
     setIsGenerating(true);
     
-    // Simulate AI processing
+    // Simulate AI processing with personalized plan
     setTimeout(() => {
-      const generatedPlan: StudyPlan[] = [
-        {
-          id: '1',
-          subject: 'Linear Algebra',
-          timeSlot: '08:00 - 09:30',
+      const generatedPlan: StudyPlan[] = [];
+      let idCounter = 1;
+
+      // Extract subjects from timetable or study goals
+      const subjects: string[] = [];
+      
+      if (timetable) {
+        Object.values(timetable).forEach(day => {
+          day.forEach(classItem => {
+            const subjectMatch = classItem.match(/^([^0-9]+)/);
+            if (subjectMatch) {
+              const subject = subjectMatch[1].trim();
+              if (subject && !subjects.includes(subject)) {
+                subjects.push(subject);
+              }
+            }
+          });
+        });
+      }
+
+      // Add subjects from study goals
+      if (studyGoals.trim()) {
+        const goalLines = studyGoals.split('\n');
+        goalLines.forEach(line => {
+          const words = line.split(/[,;]/).map(s => s.trim());
+          words.forEach(word => {
+            if (word.length > 3 && !subjects.includes(word)) {
+              subjects.push(word);
+            }
+          });
+        });
+      }
+
+      // Generate morning study session (7:00 - 8:30)
+      if (subjects.length > 0) {
+        generatedPlan.push({
+          id: String(idCounter++),
+          subject: subjects[0],
+          timeSlot: '07:00 - 08:30',
           duration: '1.5 hours',
-          activity: 'Review Matrix Operations',
+          activity: 'Morning Review Session',
           priority: 'high',
-          description: 'Focus on eigenvalues and eigenvectors. Practice problem sets 4-6.'
-        },
-        {
-          id: '2',
-          subject: 'Thermodynamics',
-          timeSlot: '10:00 - 11:30',
+          description: 'Start your day with focused studying. Review key concepts and solve practice problems.'
+        });
+      }
+
+      // Mid-morning study (9:00 - 10:30)
+      if (subjects.length > 1) {
+        generatedPlan.push({
+          id: String(idCounter++),
+          subject: subjects[1],
+          timeSlot: '09:00 - 10:30',
           duration: '1.5 hours',
-          activity: 'Study Heat Transfer',
+          activity: 'Deep Work Session',
           priority: 'high',
-          description: 'Review conduction, convection, and radiation. Work through example problems.'
-        },
-        {
-          id: '3',
-          subject: 'Circuit Analysis',
-          timeSlot: '14:00 - 15:00',
-          duration: '1 hour',
-          activity: 'Practice Problems',
+          description: 'Focus on challenging topics. Use active recall and practice problems.'
+        });
+      }
+
+      // Break time (10:30 - 11:00)
+      generatedPlan.push({
+        id: String(idCounter++),
+        subject: 'Break Time',
+        timeSlot: '10:30 - 11:00',
+        duration: '30 minutes',
+        activity: 'Short Break',
+        priority: 'medium',
+        description: 'Take a walk, have a healthy snack, or do light stretching to refresh.'
+      });
+
+      // Pre-lunch study (11:00 - 12:30)
+      if (subjects.length > 2) {
+        generatedPlan.push({
+          id: String(idCounter++),
+          subject: subjects[2],
+          timeSlot: '11:00 - 12:30',
+          duration: '1.5 hours',
+          activity: 'Practice & Application',
+          priority: 'high',
+          description: 'Apply concepts through exercises and real-world problem solving.'
+        });
+      }
+
+      // Afternoon study (14:00 - 15:30)
+      if (subjects.length > 3) {
+        generatedPlan.push({
+          id: String(idCounter++),
+          subject: subjects[3] || subjects[0],
+          timeSlot: '14:00 - 15:30',
+          duration: '1.5 hours',
+          activity: 'Concept Mastery',
           priority: 'medium',
-          description: 'Solve AC circuit problems. Focus on impedance calculations.'
-        },
-        {
-          id: '4',
-          subject: 'Break Time',
-          timeSlot: '15:00 - 15:30',
-          duration: '30 minutes',
-          activity: 'Physical Exercise',
-          priority: 'medium',
-          description: 'Take a walk or do light stretching to refresh your mind.'
-        },
-        {
-          id: '5',
-          subject: 'Programming',
+          description: 'Review notes, create mind maps, and strengthen understanding.'
+        });
+      }
+
+      // Exercise break (15:30 - 16:00)
+      generatedPlan.push({
+        id: String(idCounter++),
+        subject: 'Physical Activity',
+        timeSlot: '15:30 - 16:00',
+        duration: '30 minutes',
+        activity: 'Exercise Break',
+        priority: 'medium',
+        description: 'Physical activity boosts focus and memory retention. Go for a jog or do a quick workout.'
+      });
+
+      // Late afternoon (16:00 - 17:30)
+      if (subjects.length > 0) {
+        generatedPlan.push({
+          id: String(idCounter++),
+          subject: subjects[subjects.length > 4 ? 4 : 0],
           timeSlot: '16:00 - 17:30',
           duration: '1.5 hours',
-          activity: 'Code Review & Practice',
+          activity: 'Review & Consolidation',
           priority: 'medium',
-          description: 'Work on data structures and algorithms. Complete coding assignments.'
-        },
-        {
-          id: '6',
-          subject: 'General Review',
-          timeSlot: '19:00 - 20:00',
+          description: 'Review what you learned today. Test yourself with flashcards or practice questions.'
+        });
+      }
+
+      // Evening planning (19:00 - 20:00)
+      generatedPlan.push({
+        id: String(idCounter++),
+        subject: 'Daily Review',
+        timeSlot: '19:00 - 20:00',
+        duration: '1 hour',
+        activity: 'Journal & Planning',
+        priority: 'low',
+        description: 'Reflect on today\'s progress, journal your learning, and plan tomorrow\'s priorities.'
+      });
+
+      // Add exam-focused sessions if exam dates provided
+      if (examDates.trim()) {
+        generatedPlan.push({
+          id: String(idCounter++),
+          subject: 'Exam Preparation',
+          timeSlot: '20:00 - 21:00',
           duration: '1 hour',
-          activity: 'Journal & Planning',
-          priority: 'low',
-          description: 'Review today\'s learning and plan tomorrow\'s priorities.'
-        }
-      ];
+          activity: 'Exam-Focused Study',
+          priority: 'high',
+          description: `Focus on upcoming exams: ${examDates.slice(0, 50)}. Practice past papers and review key formulas.`
+        });
+      }
       
       setStudyPlan(generatedPlan);
       setIsGenerating(false);
       
       toast({
         title: "Study Plan Generated! 🎉",
-        description: "Your personalized study plan is ready. Review and adjust as needed.",
+        description: `Created ${generatedPlan.length} personalized study sessions for you.`,
       });
-    }, 3000);
+    }, 2500);
   };
 
   const getPriorityColor = (priority: 'high' | 'medium' | 'low') => {
