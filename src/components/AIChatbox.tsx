@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Bot, User, Sparkles, Target, Calendar, Lightbulb } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   id: string;
@@ -13,11 +15,12 @@ interface Message {
 }
 
 export const AIChatbox = () => {
+  const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       type: 'ai',
-      content: "Hello! I'm your AI productivity assistant. I can help you organize tasks, create study plans, provide motivation, and optimize your daily schedule. What would you like to work on today?",
+      content: "Hello! I'm your AI assistant. Ask me anything - I can help with productivity, answer questions, have conversations, or just chat about whatever's on your mind!",
       timestamp: new Date()
     }
   ]);
@@ -25,7 +28,7 @@ export const AIChatbox = () => {
   const [isTyping, setIsTyping] = useState(false);
 
   const sendMessage = async () => {
-    if (!inputMessage.trim()) return;
+    if (!inputMessage.trim() || isTyping) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -38,48 +41,77 @@ export const AIChatbox = () => {
     setInputMessage('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse = generateAIResponse(userMessage.content);
+    try {
+      // Prepare conversation history for AI
+      const conversationHistory = messages.map(msg => ({
+        role: msg.type === 'user' ? 'user' : 'assistant',
+        content: msg.content
+      }));
+
+      // Add the new user message
+      conversationHistory.push({
+        role: 'user',
+        content: userMessage.content
+      });
+
+      console.log('Sending message to AI...');
+
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: { messages: conversationHistory }
+      });
+
+      if (error) {
+        console.error('Error calling AI:', error);
+        throw error;
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: aiResponse,
+        content: data.message,
         timestamp: new Date()
       };
       
       setMessages(prev => [...prev, aiMessage]);
-      setIsTyping(false);
-    }, 1500);
-  };
+    } catch (error) {
+      console.error('Error in sendMessage:', error);
+      
+      let errorMessage = 'Failed to get AI response. Please try again.';
+      
+      if (error.message?.includes('Rate limit')) {
+        errorMessage = 'Too many requests. Please wait a moment and try again.';
+      } else if (error.message?.includes('Payment required')) {
+        errorMessage = 'AI service requires credits. Please contact support.';
+      }
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
 
-  const generateAIResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase();
-    
-    if (input.includes('task') || input.includes('todo')) {
-      return "I can help you manage your tasks! Here are some suggestions:\n\n• Break large tasks into smaller, manageable steps\n• Set specific deadlines for each task\n• Prioritize based on urgency and importance\n• Use the Pomodoro technique for focused work sessions\n\nWould you like me to help you create a specific task or study plan?";
+      // Add error message to chat
+      const errorMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'ai',
+        content: "I apologize, but I encountered an error. Please try again.",
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsTyping(false);
     }
-    
-    if (input.includes('study') || input.includes('exam')) {
-      return "Great! Let's create an effective study plan:\n\n📚 **Study Strategy:**\n• Active recall: Test yourself regularly\n• Spaced repetition: Review material at increasing intervals\n• Pomodoro sessions: 25 min focus + 5 min break\n• Practice problems: Apply concepts actively\n\nWhat subject are you studying for? I can create a personalized schedule!";
-    }
-    
-    if (input.includes('motivat') || input.includes('help') || input.includes('stuck')) {
-      return "I believe in you! 🌟 Remember:\n\n• Every expert was once a beginner\n• Progress > Perfection\n• Small consistent steps lead to big results\n• You've overcome challenges before, you can do it again\n\n**Quick motivation boost:**\nThink about why you started this journey. Your future self will thank you for the effort you put in today. What's one small step you can take right now?";
-    }
-    
-    if (input.includes('schedule') || input.includes('time') || input.includes('plan')) {
-      return "Let's optimize your schedule! 🗓️\n\n**Productivity Framework:**\n• Morning: Deep work on important tasks\n• Afternoon: Meetings, lighter tasks\n• Evening: Review, plan tomorrow\n\n**Energy management:**\n• Track your peak energy hours\n• Schedule difficult tasks during high-energy periods\n• Include breaks and buffer time\n\nWhat's your current biggest scheduling challenge?";
-    }
-    
-    return "That's an interesting question! As your AI productivity assistant, I'm here to help you with:\n\n✨ Task management and organization\n📅 Study planning and scheduling\n🎯 Goal setting and tracking\n💪 Motivation and productivity tips\n🧠 Learning strategies\n\nCould you be more specific about what you'd like help with? I'm here to support your success!";
   };
 
   const quickPrompts = [
-    { icon: Target, text: "Help me prioritize my tasks", prompt: "Help me prioritize my tasks for today" },
-    { icon: Calendar, text: "Create a study schedule", prompt: "Can you help me create a study schedule for my upcoming exams?" },
-    { icon: Lightbulb, text: "Productivity tips", prompt: "What are some productivity tips for engineering students?" },
-    { icon: Sparkles, text: "Motivate me", prompt: "I'm feeling unmotivated, can you help?" }
+    { icon: Target, text: "Tell me a joke", prompt: "Tell me a funny joke" },
+    { icon: Calendar, text: "Explain quantum physics", prompt: "Can you explain quantum physics in simple terms?" },
+    { icon: Lightbulb, text: "Creative ideas", prompt: "Give me some creative project ideas" },
+    { icon: Sparkles, text: "Just chat", prompt: "What's the most interesting thing you know?" }
   ];
 
   return (
@@ -172,10 +204,10 @@ export const AIChatbox = () => {
           {/* Input */}
           <div className="flex gap-2 mt-auto">
             <Input
-              placeholder="Ask me anything about productivity, tasks, or study planning..."
+              placeholder="Ask me anything - I'm here to chat and help!"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+              onKeyPress={(e) => e.key === 'Enter' && !isTyping && sendMessage()}
               className="flex-1 bg-surface/50 border-glass-border"
               disabled={isTyping}
             />
