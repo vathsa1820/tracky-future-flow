@@ -4,22 +4,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { z } from "zod";
 
 const emailSchema = z.string().email("Invalid email address");
-const phoneSchema = z.string().regex(/^\+?[1-9]\d{1,14}$/, "Invalid phone number format. Use international format (e.g., +1234567890)");
 
 const Auth = () => {
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -64,7 +60,6 @@ const Auth = () => {
       if (error) throw error;
 
       setIsOtpSent(true);
-      setAuthMethod("email");
       toast({
         title: "OTP Sent",
         description: "Check your email for the verification code",
@@ -80,45 +75,6 @@ const Auth = () => {
     }
   };
 
-  const handleSendPhoneOTP = async () => {
-    try {
-      phoneSchema.parse(phone);
-    } catch (error) {
-      toast({
-        title: "Invalid Phone Number",
-        description: "Please enter a valid phone number in international format (e.g., +1234567890)",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        phone,
-        options: {
-          shouldCreateUser: true,
-        },
-      });
-
-      if (error) throw error;
-
-      setIsOtpSent(true);
-      setAuthMethod("phone");
-      toast({
-        title: "OTP Sent",
-        description: "Check your phone for the verification code",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleVerifyOTP = async () => {
     if (otp.length !== 6) {
@@ -132,11 +88,11 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      const verifyParams = authMethod === "email"
-        ? { email, token: otp, type: "email" as const }
-        : { phone, token: otp, type: "sms" as const };
-
-      const { error } = await supabase.auth.verifyOtp(verifyParams);
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: otp,
+        type: "email",
+      });
 
       if (error) throw error;
 
@@ -157,11 +113,7 @@ const Auth = () => {
 
   const handleResendOTP = async () => {
     setOtp("");
-    if (authMethod === "email") {
-      await handleSendEmailOTP();
-    } else {
-      await handleSendPhoneOTP();
-    }
+    await handleSendEmailOTP();
   };
 
   if (isOtpSent) {
@@ -171,7 +123,7 @@ const Auth = () => {
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-center">Verify OTP</CardTitle>
             <CardDescription className="text-center">
-              Enter the 6-digit code sent to your {authMethod}
+              Enter the 6-digit code sent to your email
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -218,7 +170,7 @@ const Auth = () => {
                 disabled={loading}
                 className="text-sm w-full"
               >
-                Use different {authMethod}
+                Use different email
               </Button>
             </div>
           </CardContent>
@@ -236,61 +188,28 @@ const Auth = () => {
             Sign in or create an account using OTP verification
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="email" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="email">Email</TabsTrigger>
-              <TabsTrigger value="phone">Phone</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="email" className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your.email@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSendEmailOTP()}
-                />
-              </div>
-              <Button
-                onClick={handleSendEmailOTP}
-                disabled={loading || !email}
-                className="w-full"
-              >
-                {loading ? "Sending..." : "Send OTP via Email"}
-              </Button>
-            </TabsContent>
-            
-            <TabsContent value="phone" className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+1234567890"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSendPhoneOTP()}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Use international format (e.g., +1234567890)
-                </p>
-              </div>
-              <Button
-                onClick={handleSendPhoneOTP}
-                disabled={loading || !phone}
-                className="w-full"
-              >
-                {loading ? "Sending..." : "Send OTP via SMS"}
-              </Button>
-            </TabsContent>
-          </Tabs>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email Address</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="your.email@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSendEmailOTP()}
+            />
+          </div>
+          <Button
+            onClick={handleSendEmailOTP}
+            disabled={loading || !email}
+            className="w-full"
+          >
+            {loading ? "Sending..." : "Send Verification Code"}
+          </Button>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Secure authentication powered by OTP verification</p>
+          <div className="text-center text-sm text-muted-foreground">
+            <p>Secure authentication with email verification</p>
           </div>
         </CardContent>
       </Card>
