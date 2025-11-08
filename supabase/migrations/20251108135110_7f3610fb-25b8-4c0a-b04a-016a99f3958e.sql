@@ -1,0 +1,2 @@
+-- Enable JWT verification for analyze-timetable function
+-- This is configured in supabase/config.toml by removing verify_jwt = false
