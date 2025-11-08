@@ -53,7 +53,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          shouldCreateUser: true,
+          shouldCreateUser: false,
         },
       });
 
@@ -183,9 +183,9 @@ const Auth = () => {
               <Mail className="h-6 w-6 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl">Welcome to Tracky</CardTitle>
+          <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <CardDescription>
-            Sign in with your email
+            Sign in to your account
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
