@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ interface Message {
 
 export const AIChatbox = () => {
   const { toast } = useToast();
+  const [userName, setUserName] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -26,6 +27,32 @@ export const AIChatbox = () => {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+
+  // Fetch user profile on mount
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (profile) {
+          setUserName(profile.name);
+          // Update welcome message with user's name
+          setMessages([{
+            id: '1',
+            type: 'ai',
+            content: `Hello ${profile.name}! I'm your AI assistant. Ask me anything - I can help with productivity, answer questions, have conversations, or just chat about whatever's on your mind!`,
+            timestamp: new Date()
+          }]);
+        }
+      }
+    };
+    fetchUserProfile();
+  }, []);
 
   const sendMessage = async () => {
     if (!inputMessage.trim() || isTyping) return;
@@ -120,7 +147,7 @@ export const AIChatbox = () => {
         <CardHeader className="border-b border-glass-border">
           <CardTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5 text-primary" />
-            AI Productivity Assistant
+            {userName ? `Chat with AI - ${userName}` : "AI Productivity Assistant"}
             <Sparkles className="h-4 w-4 text-accent" />
           </CardTitle>
         </CardHeader>

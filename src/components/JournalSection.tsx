@@ -1,52 +1,91 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar, Flame, TrendingUp, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface JournalEntry {
   id: string;
-  date: Date;
+  created_at: string;
   content: string;
   mood: 'great' | 'good' | 'okay' | 'tough';
 }
 
 export const JournalSection = () => {
-  const [entries, setEntries] = useState<JournalEntry[]>([
-    {
-      id: '1',
-      date: new Date(2024, 0, 15),
-      content: "Had a really productive day today! Completed my circuit analysis assignment and understood the concepts better. Feeling confident about the upcoming exam.",
-      mood: 'great'
-    },
-    {
-      id: '2', 
-      date: new Date(2024, 0, 14),
-      content: "Struggled a bit with the thermodynamics problems, but I'm getting there. Decided to form a study group with classmates.",
-      mood: 'okay'
-    }
-  ]);
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentEntry, setCurrentEntry] = useState('');
   const [selectedMood, setSelectedMood] = useState<'great' | 'good' | 'okay' | 'tough'>('good');
   const { toast } = useToast();
 
-  const saveEntry = () => {
+  // Fetch journal entries from Supabase
+  useEffect(() => {
+    fetchEntries();
+  }, []);
+
+  const fetchEntries = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('journal_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setEntries((data || []).map(entry => ({
+        ...entry,
+        mood: entry.mood as 'great' | 'good' | 'okay' | 'tough'
+      })));
+    } catch (error) {
+      console.error('Error fetching journal entries:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load journal entries",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveEntry = async () => {
     if (!currentEntry.trim()) return;
 
-    const newEntry: JournalEntry = {
-      id: Date.now().toString(),
-      date: new Date(),
-      content: currentEntry.trim(),
-      mood: selectedMood
-    };
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    setEntries([newEntry, ...entries]);
-    setCurrentEntry('');
-    toast({
-      title: "Journal Entry Saved",
-      description: "Your thoughts have been recorded. Great job reflecting!",
-    });
+      const { data, error } = await supabase
+        .from('journal_entries')
+        .insert([{
+          user_id: user.id,
+          content: currentEntry.trim(),
+          mood: selectedMood
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setEntries([{...data, mood: data.mood as 'great' | 'good' | 'okay' | 'tough'}, ...entries]);
+      setCurrentEntry('');
+      toast({
+        title: "Journal Entry Saved",
+        description: "Your thoughts have been recorded. Great job reflecting!",
+      });
+    } catch (error) {
+      console.error('Error saving journal entry:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save journal entry",
+        variant: "destructive"
+      });
+    }
   };
 
   const streak = 7; // Mock streak data
@@ -65,6 +104,14 @@ export const JournalSection = () => {
     okay: 'text-accent',
     tough: 'text-destructive'
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -156,7 +203,7 @@ export const JournalSection = () => {
                   <span className="text-2xl">{moodEmojis[entry.mood]}</span>
                   <div>
                     <div className="font-medium">
-                      {entry.date.toLocaleDateString('en-US', { 
+                      {new Date(entry.created_at).toLocaleDateString('en-US', { 
                         weekday: 'long',
                         year: 'numeric', 
                         month: 'long', 

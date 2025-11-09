@@ -10,9 +10,11 @@ import { z } from "zod";
 import { Mail } from "lucide-react";
 
 const emailSchema = z.string().email("Invalid email address");
+const nameSchema = z.string().min(2, "Name must be at least 2 characters");
 
 const Auth = () => {
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [otp, setOtp] = useState("");
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -39,10 +41,11 @@ const Auth = () => {
   const handleSendOTP = async () => {
     try {
       emailSchema.parse(email);
-    } catch (error) {
+      nameSchema.parse(name);
+    } catch (error: any) {
       toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address",
+        title: "Validation Error",
+        description: error.message || "Please check your inputs",
         variant: "destructive",
       });
       return;
@@ -53,7 +56,10 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          shouldCreateUser: false,
+          shouldCreateUser: true,
+          data: {
+            name: name
+          }
         },
       });
 
@@ -183,12 +189,21 @@ const Auth = () => {
               <Mail className="h-6 w-6 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl">Welcome Back</CardTitle>
+          <CardTitle className="text-2xl">Welcome to Tracky</CardTitle>
           <CardDescription>
-            Sign in to your account
+            Sign up or sign in to get started
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Input
+              type="text"
+              placeholder="Enter your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="h-11"
+            />
+          </div>
           <div className="space-y-2">
             <Input
               type="email"
@@ -201,7 +216,7 @@ const Auth = () => {
           </div>
           <Button
             onClick={handleSendOTP}
-            disabled={loading || !email}
+            disabled={loading || !email || !name}
             className="w-full h-11"
           >
             {loading ? "Sending..." : "Continue"}

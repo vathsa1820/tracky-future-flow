@@ -1,10 +1,28 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Home, CheckCircle, BookOpen, MessageSquare, Brain } from "lucide-react";
-import { useLocation, Link } from "react-router-dom";
+import { Home, CheckCircle, BookOpen, MessageSquare, Brain, LogOut } from "lucide-react";
+import { useLocation, Link, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export const Navigation = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
   
   const navItems = [
     { path: "/", icon: Home, label: "Dashboard" },
@@ -13,6 +31,23 @@ export const Navigation = () => {
     { path: "/journal", icon: BookOpen, label: "Journal" },
     { path: "/chat", icon: MessageSquare, label: "AI Assistant" }
   ];
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Signed Out",
+        description: "You have been successfully signed out",
+      });
+      navigate("/");
+    }
+  };
 
   return (
     <div className="sticky top-4 z-50 container mx-auto px-4 pt-4">
@@ -42,6 +77,18 @@ export const Navigation = () => {
                   </Link>
                 </Button>
               ))}
+              
+              {isAuthenticated && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="flex items-center gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">Logout</span>
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>

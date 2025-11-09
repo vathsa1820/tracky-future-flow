@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,23 +7,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Edit3, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Todo {
   id: string;
   text: string;
   completed: boolean;
-  createdAt: Date;
-  dueTime?: string;
+  created_at: string;
+  due_time?: string;
   priority: 'low' | 'medium' | 'high';
 }
 
 export const TodoList = () => {
-  const [todos, setTodos] = useState<Todo[]>([
-    { id: '1', text: 'Complete Linear Algebra assignment', completed: true, createdAt: new Date(), dueTime: '14:00', priority: 'high' },
-    { id: '2', text: 'Study for Thermodynamics exam', completed: false, createdAt: new Date(), dueTime: '16:30', priority: 'high' },
-    { id: '3', text: 'Work on team project proposal', completed: false, createdAt: new Date(), dueTime: '10:00', priority: 'medium' },
-    { id: '4', text: 'Review Circuit Analysis notes', completed: false, createdAt: new Date(), dueTime: '20:00', priority: 'low' },
-  ]);
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [loading, setLoading] = useState(true);
   const [newTodo, setNewTodo] = useState('');
   const [newDueTime, setNewDueTime] = useState('');
   const [newPriority, setNewPriority] = useState<'low' | 'medium' | 'high'>('medium');
@@ -33,76 +30,180 @@ export const TodoList = () => {
   const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const { toast } = useToast();
 
-  const addTodo = () => {
-    if (!newTodo.trim()) return;
-    
-    const todo: Todo = {
-      id: Date.now().toString(),
-      text: newTodo.trim(),
-      completed: false,
-      createdAt: new Date(),
-      dueTime: newDueTime || undefined,
-      priority: newPriority
-    };
-    
-    setTodos([todo, ...todos]);
-    setNewTodo('');
-    setNewDueTime('');
-    setNewPriority('medium');
-    toast({
-      title: "Task Added",
-      description: "Your new task has been added to the list.",
-    });
+  // Fetch todos from Supabase
+  useEffect(() => {
+    fetchTodos();
+  }, []);
+
+  const fetchTodos = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTodos((data || []).map(task => ({
+        ...task,
+        priority: task.priority as 'low' | 'medium' | 'high'
+      })));
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load tasks",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const toggleTodo = (id: string) => {
-    setTodos(todos.map(todo => 
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    ));
+  const addTodo = async () => {
+    if (!newTodo.trim()) return;
     
-    const todo = todos.find(t => t.id === id);
-    if (todo && !todo.completed) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([{
+          user_id: user.id,
+          text: newTodo.trim(),
+          completed: false,
+          due_time: newDueTime || null,
+          priority: newPriority
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setTodos([{...data, priority: data.priority as 'low' | 'medium' | 'high'}, ...todos]);
+      setNewTodo('');
+      setNewDueTime('');
+      setNewPriority('medium');
       toast({
-        title: "Task Completed! 🎉",
-        description: "Great job! Keep up the momentum.",
+        title: "Task Added",
+        description: "Your new task has been added to the list.",
+      });
+    } catch (error) {
+      console.error('Error adding task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add task",
+        variant: "destructive"
       });
     }
   };
 
-  const deleteTodo = (id: string) => {
-    setTodos(todos.filter(todo => todo.id !== id));
-    toast({
-      title: "Task Deleted",
-      description: "Task has been removed from your list.",
-    });
+  const toggleTodo = async (id: string) => {
+    const todo = todos.find(t => t.id === id);
+    if (!todo) return;
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ completed: !todo.completed })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setTodos(todos.map(t => 
+        t.id === id ? { ...t, completed: !t.completed } : t
+      ));
+      
+      if (!todo.completed) {
+        toast({
+          title: "Task Completed! 🎉",
+          description: "Great job! Keep up the momentum.",
+        });
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update task",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const deleteTodo = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setTodos(todos.filter(todo => todo.id !== id));
+      toast({
+        title: "Task Deleted",
+        description: "Task has been removed from your list.",
+      });
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete task",
+        variant: "destructive"
+      });
+    }
   };
 
   const startEdit = (todo: Todo) => {
     setEditingId(todo.id);
     setEditText(todo.text);
-    setEditDueTime(todo.dueTime || '');
+    setEditDueTime(todo.due_time || '');
     setEditPriority(todo.priority);
   };
 
-  const saveEdit = () => {
-    if (!editText.trim()) return;
+  const saveEdit = async () => {
+    if (!editText.trim() || !editingId) return;
     
-    setTodos(todos.map(todo =>
-      todo.id === editingId ? { 
-        ...todo, 
-        text: editText.trim(),
-        dueTime: editDueTime || undefined,
-        priority: editPriority
-      } : todo
-    ));
-    setEditingId(null);
-    setEditText('');
-    setEditDueTime('');
-    setEditPriority('medium');
-    toast({
-      title: "Task Updated",
-      description: "Your task has been successfully updated.",
-    });
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({
+          text: editText.trim(),
+          due_time: editDueTime || null,
+          priority: editPriority
+        })
+        .eq('id', editingId);
+
+      if (error) throw error;
+
+      setTodos(todos.map(todo =>
+        todo.id === editingId ? { 
+          ...todo, 
+          text: editText.trim(),
+          due_time: editDueTime || undefined,
+          priority: editPriority
+        } : todo
+      ));
+      setEditingId(null);
+      setEditText('');
+      setEditDueTime('');
+      setEditPriority('medium');
+      toast({
+        title: "Task Updated",
+        description: "Your task has been successfully updated.",
+      });
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update task",
+        variant: "destructive"
+      });
+    }
   };
 
   const completedCount = todos.filter(todo => todo.completed).length;
@@ -135,12 +236,20 @@ export const TodoList = () => {
       return priorityOrder[b.priority] - priorityOrder[a.priority];
     }
     
-    if (a.dueTime && b.dueTime) {
-      return a.dueTime.localeCompare(b.dueTime);
+    if (a.due_time && b.due_time) {
+      return a.due_time.localeCompare(b.due_time);
     }
     
     return 0;
   });
+
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -209,7 +318,7 @@ export const TodoList = () => {
             key={todo.id} 
             className={`glass card-3d transition-all duration-smooth ${
               todo.completed ? 'opacity-75' : ''
-            } ${isOverdue(todo.dueTime) && !todo.completed ? 'ring-2 ring-destructive/50' : ''}`}
+            } ${isOverdue(todo.due_time) && !todo.completed ? 'ring-2 ring-destructive/50' : ''}`}
           >
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
@@ -271,17 +380,17 @@ export const TodoList = () => {
                         </Badge>
                       </div>
                       
-                      {todo.dueTime && (
+                      {todo.due_time && (
                         <div className={`flex items-center gap-1 text-sm ${
-                          isOverdue(todo.dueTime) && !todo.completed 
+                          isOverdue(todo.due_time) && !todo.completed 
                             ? 'text-destructive' 
                             : 'text-muted-foreground'
                         }`}>
-                          {isOverdue(todo.dueTime) && !todo.completed && (
+                          {isOverdue(todo.due_time) && !todo.completed && (
                             <AlertCircle className="h-3 w-3" />
                           )}
                           <Clock className="h-3 w-3" />
-                          <span>Due: {todo.dueTime}</span>
+                          <span>Due: {todo.due_time}</span>
                         </div>
                       )}
                     </div>

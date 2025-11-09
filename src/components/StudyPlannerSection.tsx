@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { TimetableUpload } from "./TimetableUpload";
 import { Upload, Brain, Calendar, Clock, Target, Sparkles, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StudyPlan {
   id: string;
@@ -33,7 +34,77 @@ export const StudyPlannerSection = () => {
   const [examDates, setExamDates] = useState('');
   const [studyPlan, setStudyPlan] = useState<StudyPlan[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  // Fetch existing study plans
+  useEffect(() => {
+    fetchStudyPlans();
+  }, []);
+
+  const fetchStudyPlans = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('study_plans')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setStudyPlan((data || []).map(plan => ({
+        ...plan,
+        timeSlot: plan.time_slot,
+        priority: plan.priority as 'high' | 'medium' | 'low'
+      })));
+    } catch (error) {
+      console.error('Error fetching study plans:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load study plans",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveStudyPlanToDatabase = async (plans: StudyPlan[]) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Clear existing plans
+      await supabase
+        .from('study_plans')
+        .delete()
+        .eq('user_id', user.id);
+
+      // Insert new plans
+      const { error } = await supabase
+        .from('study_plans')
+        .insert(plans.map(plan => ({
+          user_id: user.id,
+          subject: plan.subject,
+          time_slot: plan.timeSlot,
+          duration: plan.duration,
+          activity: plan.activity,
+          priority: plan.priority,
+          description: plan.description
+        })));
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving study plans:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save study plans",
+        variant: "destructive"
+      });
+    }
+  };
 
   const generateStudyPlan = async () => {
     if (!timetable && !studyGoals.trim()) {
@@ -70,6 +141,7 @@ export const StudyPlannerSection = () => {
 
         const data = await response.json();
         setStudyPlan(data.studyPlan);
+        await saveStudyPlanToDatabase(data.studyPlan);
         
         toast({
           title: "Study Plan Generated! 🎉",
@@ -152,6 +224,7 @@ export const StudyPlannerSection = () => {
         });
 
         setStudyPlan(generatedPlan);
+        await saveStudyPlanToDatabase(generatedPlan);
         
         toast({
           title: "Study Plan Generated! 🎉",
@@ -190,7 +263,13 @@ export const StudyPlannerSection = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
-      {/* Input Section */}
+      {loading ? (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        </div>
+      ) : (
+        <>
+          {/* Input Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Timetable Upload */}
         <Card className="glass-elevated card-3d">
@@ -319,6 +398,8 @@ export const StudyPlannerSection = () => {
             </div>
           </CardContent>
         </Card>
+      )}
+        </>
       )}
     </div>
   );
