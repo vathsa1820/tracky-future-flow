@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Bot, User, Sparkles, Target, Calendar, Lightbulb } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface Message {
@@ -16,7 +15,7 @@ interface Message {
 
 export const AIChatbox = () => {
   const { toast } = useToast();
-  const [userName, setUserName] = useState<string>("");
+  const userName = "User";
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -27,32 +26,6 @@ export const AIChatbox = () => {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-
-  // Fetch user profile on mount
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('name')
-          .eq('user_id', user.id)
-          .single();
-        
-        if (profile) {
-          setUserName(profile.name);
-          // Update welcome message with user's name
-          setMessages([{
-            id: '1',
-            type: 'ai',
-            content: `Hello ${profile.name}! I'm your AI assistant. Ask me anything - I can help with productivity, answer questions, have conversations, or just chat about whatever's on your mind!`,
-            timestamp: new Date()
-          }]);
-        }
-      }
-    };
-    fetchUserProfile();
-  }, []);
 
   const sendMessage = async () => {
     if (!inputMessage.trim() || isTyping) return;
@@ -68,70 +41,18 @@ export const AIChatbox = () => {
     setInputMessage('');
     setIsTyping(true);
 
-    try {
-      // Prepare conversation history for AI
-      const conversationHistory = messages.map(msg => ({
-        role: msg.type === 'user' ? 'user' : 'assistant',
-        content: msg.content
-      }));
-
-      // Add the new user message
-      conversationHistory.push({
-        role: 'user',
-        content: userMessage.content
-      });
-
-      console.log('Sending message to AI...');
-
-      const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: { messages: conversationHistory }
-      });
-
-      if (error) {
-        console.error('Error calling AI:', error);
-        throw error;
-      }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
+    // Simulate AI response for public version
+    setTimeout(() => {
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: data.message,
+        content: "I'm currently in offline mode. To use AI chat features, please enable authentication and connect to the backend.",
         timestamp: new Date()
       };
       
       setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
-      console.error('Error in sendMessage:', error);
-      
-      let errorMessage = 'Failed to get AI response. Please try again.';
-      
-      if (error.message?.includes('Rate limit')) {
-        errorMessage = 'Too many requests. Please wait a moment and try again.';
-      } else if (error.message?.includes('Payment required')) {
-        errorMessage = 'AI service requires credits. Please contact support.';
-      }
-      
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive"
-      });
-
-      // Add error message to chat
-      const errorMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: "I apologize, but I encountered an error. Please try again.",
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMsg]);
-    } finally {
       setIsTyping(false);
-    }
+    }, 1000);
   };
 
   const quickPrompts = [
@@ -147,7 +68,7 @@ export const AIChatbox = () => {
         <CardHeader className="border-b border-glass-border">
           <CardTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5 text-primary" />
-            {userName ? `Chat with AI - ${userName}` : "AI Productivity Assistant"}
+            {userName ? `Chat with AI - ${userName}` : "AI Assistant"}
             <Sparkles className="h-4 w-4 text-accent" />
           </CardTitle>
         </CardHeader>

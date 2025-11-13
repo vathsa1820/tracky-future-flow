@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Edit3, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 
 interface Todo {
   id: string;
@@ -30,132 +29,66 @@ export const TodoList = () => {
   const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const { toast } = useToast();
 
-  // Fetch todos from Supabase
+  // Load todos from localStorage
   useEffect(() => {
-    fetchTodos();
+    const stored = localStorage.getItem('todos');
+    if (stored) {
+      setTodos(JSON.parse(stored));
+    }
+    setLoading(false);
   }, []);
 
-  const fetchTodos = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTodos((data || []).map(task => ({
-        ...task,
-        priority: task.priority as 'low' | 'medium' | 'high'
-      })));
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load tasks",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+  // Save todos to localStorage whenever they change
+  useEffect(() => {
+    if (!loading) {
+      localStorage.setItem('todos', JSON.stringify(todos));
     }
-  };
+  }, [todos, loading]);
 
-  const addTodo = async () => {
+  const addTodo = () => {
     if (!newTodo.trim()) return;
     
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    const newTask: Todo = {
+      id: Date.now().toString(),
+      text: newTodo.trim(),
+      completed: false,
+      created_at: new Date().toISOString(),
+      due_time: newDueTime || undefined,
+      priority: newPriority
+    };
 
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert([{
-          user_id: user.id,
-          text: newTodo.trim(),
-          completed: false,
-          due_time: newDueTime || null,
-          priority: newPriority
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setTodos([{...data, priority: data.priority as 'low' | 'medium' | 'high'}, ...todos]);
-      setNewTodo('');
-      setNewDueTime('');
-      setNewPriority('medium');
-      toast({
-        title: "Task Added",
-        description: "Your new task has been added to the list.",
-      });
-    } catch (error) {
-      console.error('Error adding task:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add task",
-        variant: "destructive"
-      });
-    }
+    setTodos([newTask, ...todos]);
+    setNewTodo('');
+    setNewDueTime('');
+    setNewPriority('medium');
+    toast({
+      title: "Task Added",
+      description: "Your new task has been added to the list.",
+    });
   };
 
-  const toggleTodo = async (id: string) => {
+  const toggleTodo = (id: string) => {
     const todo = todos.find(t => t.id === id);
     if (!todo) return;
 
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ completed: !todo.completed })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setTodos(todos.map(t => 
-        t.id === id ? { ...t, completed: !t.completed } : t
-      ));
-      
-      if (!todo.completed) {
-        toast({
-          title: "Task Completed! 🎉",
-          description: "Great job! Keep up the momentum.",
-        });
-      }
-    } catch (error) {
-      console.error('Error updating task:', error);
+    setTodos(todos.map(t => 
+      t.id === id ? { ...t, completed: !t.completed } : t
+    ));
+    
+    if (!todo.completed) {
       toast({
-        title: "Error",
-        description: "Failed to update task",
-        variant: "destructive"
+        title: "Task Completed! 🎉",
+        description: "Great job! Keep up the momentum.",
       });
     }
   };
 
-  const deleteTodo = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setTodos(todos.filter(todo => todo.id !== id));
-      toast({
-        title: "Task Deleted",
-        description: "Task has been removed from your list.",
-      });
-    } catch (error) {
-      console.error('Error deleting task:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete task",
-        variant: "destructive"
-      });
-    }
+  const deleteTodo = (id: string) => {
+    setTodos(todos.filter(todo => todo.id !== id));
+    toast({
+      title: "Task Deleted",
+      description: "Task has been removed from your list.",
+    });
   };
 
   const startEdit = (todo: Todo) => {
@@ -165,45 +98,25 @@ export const TodoList = () => {
     setEditPriority(todo.priority);
   };
 
-  const saveEdit = async () => {
+  const saveEdit = () => {
     if (!editText.trim() || !editingId) return;
     
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({
-          text: editText.trim(),
-          due_time: editDueTime || null,
-          priority: editPriority
-        })
-        .eq('id', editingId);
-
-      if (error) throw error;
-
-      setTodos(todos.map(todo =>
-        todo.id === editingId ? { 
-          ...todo, 
-          text: editText.trim(),
-          due_time: editDueTime || undefined,
-          priority: editPriority
-        } : todo
-      ));
-      setEditingId(null);
-      setEditText('');
-      setEditDueTime('');
-      setEditPriority('medium');
-      toast({
-        title: "Task Updated",
-        description: "Your task has been successfully updated.",
-      });
-    } catch (error) {
-      console.error('Error updating task:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update task",
-        variant: "destructive"
-      });
-    }
+    setTodos(todos.map(todo =>
+      todo.id === editingId ? { 
+        ...todo, 
+        text: editText.trim(),
+        due_time: editDueTime || undefined,
+        priority: editPriority
+      } : todo
+    ));
+    setEditingId(null);
+    setEditText('');
+    setEditDueTime('');
+    setEditPriority('medium');
+    toast({
+      title: "Task Updated",
+      description: "Your task has been successfully updated.",
+    });
   };
 
   const completedCount = todos.filter(todo => todo.completed).length;

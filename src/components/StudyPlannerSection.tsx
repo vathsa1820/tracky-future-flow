@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { TimetableUpload } from "./TimetableUpload";
 import { Upload, Brain, Calendar, Clock, Target, Sparkles, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 
 interface StudyPlan {
   id: string;
@@ -37,74 +36,21 @@ export const StudyPlannerSection = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // Fetch existing study plans
+  // Load study plans from localStorage
   useEffect(() => {
-    fetchStudyPlans();
+    const stored = localStorage.getItem('studyPlans');
+    if (stored) {
+      setStudyPlan(JSON.parse(stored));
+    }
+    setLoading(false);
   }, []);
 
-  const fetchStudyPlans = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('study_plans')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setStudyPlan((data || []).map(plan => ({
-        ...plan,
-        timeSlot: plan.time_slot,
-        priority: plan.priority as 'high' | 'medium' | 'low'
-      })));
-    } catch (error) {
-      console.error('Error fetching study plans:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load study plans",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+  // Save study plans to localStorage whenever they change
+  useEffect(() => {
+    if (!loading && studyPlan.length > 0) {
+      localStorage.setItem('studyPlans', JSON.stringify(studyPlan));
     }
-  };
-
-  const saveStudyPlanToDatabase = async (plans: StudyPlan[]) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Clear existing plans
-      await supabase
-        .from('study_plans')
-        .delete()
-        .eq('user_id', user.id);
-
-      // Insert new plans
-      const { error } = await supabase
-        .from('study_plans')
-        .insert(plans.map(plan => ({
-          user_id: user.id,
-          subject: plan.subject,
-          time_slot: plan.timeSlot,
-          duration: plan.duration,
-          activity: plan.activity,
-          priority: plan.priority,
-          description: plan.description
-        })));
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error saving study plans:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save study plans",
-        variant: "destructive"
-      });
-    }
-  };
+  }, [studyPlan, loading]);
 
   const generateStudyPlan = async () => {
     if (!timetable && !studyGoals.trim()) {
@@ -141,7 +87,6 @@ export const StudyPlannerSection = () => {
 
         const data = await response.json();
         setStudyPlan(data.studyPlan);
-        await saveStudyPlanToDatabase(data.studyPlan);
         
         toast({
           title: "Study Plan Generated! 🎉",
@@ -224,7 +169,6 @@ export const StudyPlannerSection = () => {
         });
 
         setStudyPlan(generatedPlan);
-        await saveStudyPlanToDatabase(generatedPlan);
         
         toast({
           title: "Study Plan Generated! 🎉",

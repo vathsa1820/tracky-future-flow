@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar, Flame, TrendingUp, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 
 interface JournalEntry {
   id: string;
@@ -20,72 +19,38 @@ export const JournalSection = () => {
   const [selectedMood, setSelectedMood] = useState<'great' | 'good' | 'okay' | 'tough'>('good');
   const { toast } = useToast();
 
-  // Fetch journal entries from Supabase
+  // Load entries from localStorage
   useEffect(() => {
-    fetchEntries();
+    const stored = localStorage.getItem('journalEntries');
+    if (stored) {
+      setEntries(JSON.parse(stored));
+    }
+    setLoading(false);
   }, []);
 
-  const fetchEntries = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('journal_entries')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setEntries((data || []).map(entry => ({
-        ...entry,
-        mood: entry.mood as 'great' | 'good' | 'okay' | 'tough'
-      })));
-    } catch (error) {
-      console.error('Error fetching journal entries:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load journal entries",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+  // Save entries to localStorage whenever they change
+  useEffect(() => {
+    if (!loading) {
+      localStorage.setItem('journalEntries', JSON.stringify(entries));
     }
-  };
+  }, [entries, loading]);
 
-  const saveEntry = async () => {
+  const saveEntry = () => {
     if (!currentEntry.trim()) return;
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    const newEntry: JournalEntry = {
+      id: Date.now().toString(),
+      created_at: new Date().toISOString(),
+      content: currentEntry.trim(),
+      mood: selectedMood
+    };
 
-      const { data, error } = await supabase
-        .from('journal_entries')
-        .insert([{
-          user_id: user.id,
-          content: currentEntry.trim(),
-          mood: selectedMood
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setEntries([{...data, mood: data.mood as 'great' | 'good' | 'okay' | 'tough'}, ...entries]);
-      setCurrentEntry('');
-      toast({
-        title: "Journal Entry Saved",
-        description: "Your thoughts have been recorded. Great job reflecting!",
-      });
-    } catch (error) {
-      console.error('Error saving journal entry:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save journal entry",
-        variant: "destructive"
-      });
-    }
+    setEntries([newEntry, ...entries]);
+    setCurrentEntry('');
+    toast({
+      title: "Journal Entry Saved",
+      description: "Your thoughts have been recorded. Great job reflecting!",
+    });
   };
 
   const streak = 7; // Mock streak data
