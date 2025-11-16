@@ -2,9 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Navigation } from "./Navigation";
+import { Hero3D } from "./Hero3D";
 import { CheckCircle, Target, TrendingUp, Calendar, MessageSquare, BookOpen, ArrowRight, Brain } from "lucide-react";
 import { Link } from "react-router-dom";
-import heroImage from "@/assets/hero-dashboard.jpg";
 
 const Dashboard = () => {
   const stats = {
@@ -19,22 +19,9 @@ const Dashboard = () => {
       {/* Navigation */}
       <Navigation />
       
-      {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        <div 
-          className="absolute inset-0 bg-cover bg-center opacity-20"
-          style={{ backgroundImage: `url(${heroImage})` }}
-        />
-        <div className="relative z-10 container mx-auto px-4 py-8">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl md:text-6xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">
-              Welcome to Tracky
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Your futuristic productivity companion designed for engineering excellence
-            </p>
-          </div>
-        </div>
+      {/* Hero Section with 3D */}
+      <div className="relative overflow-hidden mb-8">
+        <Hero3D />
       </div>
 
       {/* Stats Overview */}
