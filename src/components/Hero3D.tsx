@@ -1,26 +1,35 @@
-import { SplineScene } from "./SplineScene";
+import { SplineScene } from "@/components/ui/splite";
+import { Card } from "@/components/ui/card";
+import { Spotlight } from "@/components/ui/spotlight";
 
 export const Hero3D = () => {
   return (
-    <div className="relative h-[500px] w-full">
-      <div className="absolute inset-0">
-        <SplineScene 
-          scene="https://prod.spline.design/6Wq1Q7YGyM-iab9i/scene.splinecode"
-          className="w-full h-full"
-        />
-      </div>
+    <Card className="w-full h-[500px] bg-black/[0.96] relative overflow-hidden">
+      <Spotlight
+        className="-top-40 left-0 md:left-60 md:-top-20"
+        fill="white"
+      />
       
-      {/* Overlay Content */}
-      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-        <div className="text-center px-4">
-          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">
+      <div className="flex h-full">
+        {/* Left content */}
+        <div className="flex-1 p-8 relative z-10 flex flex-col justify-center">
+          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400">
             Welcome to Tracky
           </h1>
-          <p className="text-lg md:text-xl text-foreground max-w-2xl mx-auto">
-            Your futuristic productivity companion designed for engineering excellence
+          <p className="mt-4 text-neutral-300 max-w-lg">
+            Your futuristic productivity companion designed for engineering excellence. 
+            Bring your workflow to life with beautiful 3D scenes.
           </p>
         </div>
+
+        {/* Right content */}
+        <div className="flex-1 relative">
+          <SplineScene 
+            scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
+            className="w-full h-full"
+          />
+        </div>
       </div>
-    </div>
+    </Card>
   );
 };
