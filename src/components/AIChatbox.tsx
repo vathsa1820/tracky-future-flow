@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Bot, User, Sparkles, Target, Calendar, Lightbulb } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   id: string;
@@ -16,16 +17,24 @@ interface Message {
 export const AIChatbox = () => {
   const { toast } = useToast();
   const userName = "User";
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       type: 'ai',
-      content: "Hello! I'm your AI assistant. Ask me anything - I can help with productivity, answer questions, have conversations, or just chat about whatever's on your mind!",
+      content: "Hello! I'm your AI assistant powered by Tracky. Ask me anything - I can help with productivity, answer questions, suggest study plans, or just chat about whatever's on your mind!",
       timestamp: new Date()
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isTyping]);
 
   const sendMessage = async () => {
     if (!inputMessage.trim() || isTyping) return;
@@ -38,27 +47,87 @@ export const AIChatbox = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const messageText = inputMessage.trim();
     setInputMessage('');
     setIsTyping(true);
 
-    // Simulate AI response for public version
-    setTimeout(() => {
+    try {
+      // Build conversation history for context
+      const conversationHistory = messages
+        .filter(m => m.id !== '1') // Skip initial greeting
+        .map(m => ({
+          role: m.type === 'user' ? 'user' : 'assistant',
+          content: m.content
+        }));
+
+      // Add the new user message
+      conversationHistory.push({
+        role: 'user',
+        content: messageText
+      });
+
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: { messages: conversationHistory }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to get AI response');
+      }
+
+      if (data?.error) {
+        // Handle specific error cases
+        if (data.error.includes('Rate limit')) {
+          toast({
+            title: "Too many requests",
+            description: "Please wait a moment before sending another message.",
+            variant: "destructive"
+          });
+        } else if (data.error.includes('Payment required')) {
+          toast({
+            title: "Credits needed",
+            description: "Please add credits to continue using AI features.",
+            variant: "destructive"
+          });
+        }
+        throw new Error(data.error);
+      }
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: "I'm currently in offline mode. To use AI chat features, please enable authentication and connect to the backend.",
+        content: data.message || "I'm sorry, I couldn't generate a response.",
         timestamp: new Date()
       };
       
       setMessages(prev => [...prev, aiMessage]);
+    } catch (error: any) {
+      console.error('AI Chat error:', error);
+      
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'ai',
+        content: "I'm having trouble connecting right now. Please try again in a moment.",
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      
+      if (!error.message?.includes('Rate limit') && !error.message?.includes('Payment required')) {
+        toast({
+          title: "Connection issue",
+          description: "Could not reach the AI service. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } finally {
       setIsTyping(false);
-    }, 1000);
+    }
   };
 
   const quickPrompts = [
-    { icon: Target, text: "Tell me a joke", prompt: "Tell me a funny joke" },
-    { icon: Calendar, text: "Explain quantum physics", prompt: "Can you explain quantum physics in simple terms?" },
-    { icon: Lightbulb, text: "Creative ideas", prompt: "Give me some creative project ideas" },
+    { icon: Target, text: "Study tips", prompt: "What are the best study techniques for engineering students?" },
+    { icon: Calendar, text: "Plan my day", prompt: "Help me create an effective daily study schedule" },
+    { icon: Lightbulb, text: "Stay motivated", prompt: "Give me some motivation to keep studying" },
     { icon: Sparkles, text: "Just chat", prompt: "What's the most interesting thing you know?" }
   ];
 
@@ -73,7 +142,7 @@ export const AIChatbox = () => {
           </CardTitle>
         </CardHeader>
         
-        <CardContent className="flex-1 flex flex-col p-4">
+        <CardContent className="flex-1 flex flex-col p-4 overflow-hidden">
           {/* Messages */}
           <ScrollArea className="flex-1 pr-4">
             <div className="space-y-4">
@@ -130,6 +199,7 @@ export const AIChatbox = () => {
                   </div>
                 </div>
               )}
+              <div ref={scrollRef} />
             </div>
           </ScrollArea>
           
