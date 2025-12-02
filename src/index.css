@@ -147,4 +147,12 @@ All colors MUST be HSL.
   .glow-accent {
     box-shadow: var(--shadow-glow-accent);
   }
+
+  /* Lab background utility */
+  .lab-bg::before {
+    overflow: hidden;
+    max-width: 100vw;
+    max-height: 100vh;
+    box-sizing: border-box;
+  }
 }
