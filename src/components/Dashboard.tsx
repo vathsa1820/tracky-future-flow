@@ -4,7 +4,8 @@ import { Progress } from "@/components/ui/progress";
 import { GlowCard } from "@/components/ui/spotlight-card";
 import { Navigation } from "./Navigation";
 import { Hero3D } from "./Hero3D";
-import { CheckCircle, Target, TrendingUp, Calendar, MessageSquare, BookOpen, ArrowRight, Brain } from "lucide-react";
+import { TrackyGreeting } from "./TrackyGreeting";
+import { CheckCircle, Target, TrendingUp, Calendar, Sparkles, BookOpen, ArrowRight, Brain } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Dashboard = () => {
@@ -23,6 +24,11 @@ const Dashboard = () => {
       {/* Hero Section with 3D */}
       <div className="relative overflow-hidden mb-8">
         <Hero3D />
+      </div>
+
+      {/* Tracky Greeting */}
+      <div className="container mx-auto px-4">
+        <TrackyGreeting />
       </div>
 
       {/* Stats Overview */}
@@ -154,14 +160,14 @@ const Dashboard = () => {
           
           <GlowCard glowColor="orange" customSize className="h-auto min-h-[280px]">
             <div className="flex flex-col items-center justify-center text-center h-full">
-              <MessageSquare className="h-12 w-12 text-orange-400 mb-4 group-hover:scale-110 transition-transform duration-300" />
-              <h3 className="text-lg font-semibold mb-2 text-white">AI Assistant</h3>
+              <Sparkles className="h-12 w-12 text-orange-400 mb-4 group-hover:scale-110 transition-transform duration-300" />
+              <h3 className="text-lg font-semibold mb-2 text-white">Tracky AI</h3>
               <p className="text-neutral-400 mb-4 text-sm">
-                Get personalized productivity advice and support
+                Your accountability buddy—motivates, tracks, and keeps you on point!
               </p>
               <Button asChild className="w-full bg-orange-600 hover:bg-orange-500 hover:shadow-lg hover:shadow-orange-500/50 transition-all duration-300">
                 <Link to="/chat" className="flex items-center gap-2">
-                  Start Chat
+                  Chat with Tracky
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
