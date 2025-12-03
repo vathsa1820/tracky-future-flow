@@ -22,7 +22,7 @@ export const AIChatbox = () => {
     {
       id: '1',
       type: 'ai',
-      content: "Hello! I'm your AI assistant powered by Tracky. Ask me anything - I can help with productivity, answer questions, suggest study plans, or just chat about whatever's on your mind!",
+      content: "Hey there! 👋 I'm Tracky, your study buddy. Whether you need help crushing that exam, planning your week, or just wanna chat—I'm here for you. What's on your mind?",
       timestamp: new Date()
     }
   ]);
@@ -106,7 +106,7 @@ export const AIChatbox = () => {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: "I'm having trouble connecting right now. Please try again in a moment.",
+        content: "Oops, my brain glitched for a sec 😅 Mind trying that again?",
         timestamp: new Date()
       };
       
@@ -125,10 +125,10 @@ export const AIChatbox = () => {
   };
 
   const quickPrompts = [
-    { icon: Target, text: "Study tips", prompt: "What are the best study techniques for engineering students?" },
-    { icon: Calendar, text: "Plan my day", prompt: "Help me create an effective daily study schedule" },
-    { icon: Lightbulb, text: "Stay motivated", prompt: "Give me some motivation to keep studying" },
-    { icon: Sparkles, text: "Just chat", prompt: "What's the most interesting thing you know?" }
+    { icon: Target, text: "Study hacks", prompt: "Hey Tracky, what's your favorite study technique that actually works?" },
+    { icon: Calendar, text: "Plan my day", prompt: "I've got a lot to do today—can you help me figure out a game plan?" },
+    { icon: Lightbulb, text: "Feeling stuck", prompt: "I'm feeling unmotivated and stuck. Any advice?" },
+    { icon: Sparkles, text: "Let's chat", prompt: "What's up Tracky? Tell me something interesting!" }
   ];
 
   return (
@@ -136,9 +136,11 @@ export const AIChatbox = () => {
       <Card className="glass-elevated card-3d h-[600px] flex flex-col">
         <CardHeader className="border-b border-glass-border">
           <CardTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
-            {userName ? `Chat with AI - ${userName}` : "AI Assistant"}
-            <Sparkles className="h-4 w-4 text-accent" />
+            <div className="w-8 h-8 rounded-full bg-gradient-primary flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent font-bold">Tracky</span>
+            <span className="text-xs text-muted-foreground font-normal">• your study buddy</span>
           </CardTitle>
         </CardHeader>
         
@@ -222,7 +224,7 @@ export const AIChatbox = () => {
           {/* Input */}
           <div className="flex gap-2 mt-auto">
             <Input
-              placeholder="Ask me anything - I'm here to chat and help!"
+              placeholder="Talk to Tracky..."
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && !isTyping && sendMessage()}
