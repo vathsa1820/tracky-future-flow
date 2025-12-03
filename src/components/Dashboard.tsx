@@ -5,15 +5,18 @@ import { GlowCard } from "@/components/ui/spotlight-card";
 import { Navigation } from "./Navigation";
 import { Hero3D } from "./Hero3D";
 import { TrackyGreeting } from "./TrackyGreeting";
-import { CheckCircle, Target, TrendingUp, Calendar, Sparkles, BookOpen, ArrowRight, Brain } from "lucide-react";
+import { StreakTracker } from "./StreakTracker";
+import { useStreakTracker } from "@/hooks/useStreakTracker";
+import { CheckCircle, Target, TrendingUp, Sparkles, BookOpen, ArrowRight, Brain, Flame } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Dashboard = () => {
+  const { currentStreak } = useStreakTracker();
+  
   const stats = {
     tasksCompleted: 12,
     totalTasks: 18,
     studyHours: 4.5,
-    streak: 7
   };
 
   return (
@@ -60,11 +63,16 @@ const Dashboard = () => {
           
           <GlowCard glowColor="orange" customSize className="h-auto">
             <div className="text-center py-2">
-              <Calendar className="h-8 w-8 text-orange-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">{stats.streak}</div>
-              <div className="text-sm text-neutral-400">Day Streak</div>
+              <Flame className="h-8 w-8 text-orange-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-white">{currentStreak}</div>
+              <div className="text-sm text-neutral-400">Day Streak 🔥</div>
             </div>
           </GlowCard>
+        </div>
+
+        {/* Streak Tracker */}
+        <div className="mt-6">
+          <StreakTracker />
         </div>
 
         {/* Progress Overview */}
