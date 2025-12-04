@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { TimetableUpload } from "./TimetableUpload";
-import { Upload, Brain, Calendar, Clock, Target, Sparkles, BookOpen } from "lucide-react";
+import { Upload, Brain, Calendar, Clock, Target, Sparkles, BookOpen, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 
 interface StudyPlan {
   id: string;
@@ -34,7 +35,23 @@ export const StudyPlannerSection = () => {
   const [studyPlan, setStudyPlan] = useState<StudyPlan[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    };
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Load study plans from localStorage
   useEffect(() => {
@@ -67,22 +84,52 @@ export const StudyPlannerSection = () => {
     try {
       // Check if timetable is a File object (uploaded file)
       if (timetable instanceof File) {
+        if (!isAuthenticated) {
+          toast({
+            title: "Sign in Required",
+            description: "Please sign in to use AI timetable analysis.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Get the current session for auth header
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          toast({
+            title: "Session Expired",
+            description: "Please sign in again.",
+            variant: "destructive"
+          });
+          return;
+        }
+
         // Use the edge function to analyze the uploaded file
         const formData = new FormData();
         formData.append('file', timetable);
-        formData.append('studyGoals', studyGoals);
-        formData.append('examDates', examDates);
+        formData.append('studyGoals', studyGoals.slice(0, 2000)); // Enforce max length
+        formData.append('examDates', examDates.slice(0, 1000)); // Enforce max length
 
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-timetable`,
           {
             method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+            },
             body: formData,
           }
         );
 
         if (!response.ok) {
-          throw new Error('Failed to analyze timetable');
+          const errorData = await response.json().catch(() => ({}));
+          if (response.status === 401) {
+            throw new Error('Please sign in to use this feature');
+          }
+          if (response.status === 429) {
+            throw new Error('Rate limit exceeded. Please try again in a moment.');
+          }
+          throw new Error(errorData.error || 'Failed to analyze timetable');
         }
 
         const data = await response.json();

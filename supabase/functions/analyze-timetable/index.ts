@@ -1,3 +1,4 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
@@ -5,6 +6,12 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation constants
+const MAX_STUDY_GOALS_LENGTH = 2000;
+const MAX_EXAM_DATES_LENGTH = 1000;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -17,9 +24,41 @@ serve(async (req) => {
     const studyGoals = formData.get('studyGoals') as string || '';
     const examDates = formData.get('examDates') as string || '';
 
+    // Validate file exists
     if (!file) {
       return new Response(
         JSON.stringify({ error: 'No file provided' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      return new Response(
+        JSON.stringify({ error: 'File size cannot exceed 10MB' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate file type
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      return new Response(
+        JSON.stringify({ error: 'Only JPEG, PNG, WebP images and PDF files are allowed' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate text input lengths
+    if (studyGoals.length > MAX_STUDY_GOALS_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: `Study goals cannot exceed ${MAX_STUDY_GOALS_LENGTH} characters` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (examDates.length > MAX_EXAM_DATES_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: `Exam dates cannot exceed ${MAX_EXAM_DATES_LENGTH} characters` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -66,7 +105,7 @@ serve(async (req) => {
       
       let errorMessage = 'Failed to upload file';
       if (uploadError.message?.includes('exceeded') || uploadError.statusCode === '413') {
-        errorMessage = 'File is too large. Please upload a file smaller than 25MB.';
+        errorMessage = 'File is too large. Please upload a file smaller than 10MB.';
       } else if (uploadError.message?.includes('mime')) {
         errorMessage = 'Invalid file type. Please upload a PDF or image file.';
       }
@@ -117,9 +156,13 @@ Important guidelines:
 - Keep study sessions realistic (1-2 hours max)
 - Include time for rest and recovery`;
 
+    // Sanitize user inputs for prompt
+    const sanitizedGoals = studyGoals.replace(/[<>]/g, '').trim();
+    const sanitizedDates = examDates.replace(/[<>]/g, '').trim();
+
     const userPrompt = `Please analyze this timetable and create a personalized study plan.
-${studyGoals ? `\nStudy Goals: ${studyGoals}` : ''}
-${examDates ? `\nUpcoming Exams: ${examDates}` : ''}
+${sanitizedGoals ? `\nStudy Goals: ${sanitizedGoals}` : ''}
+${sanitizedDates ? `\nUpcoming Exams: ${sanitizedDates}` : ''}
 
 Return a JSON array of study sessions with this structure:
 [
@@ -163,13 +206,27 @@ Create 6-8 sessions covering the full day from morning to evening.`;
             ]
           }
         ],
-        temperature: 0.7,
       }),
     });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
       console.error('AI API error:', aiResponse.status, errorText);
+      
+      if (aiResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'Payment required. Please add credits to your workspace.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ error: 'Failed to analyze timetable with AI' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
