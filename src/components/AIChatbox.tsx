@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Bot, User, Sparkles, Target, Calendar, Lightbulb } from "lucide-react";
+import { Send, Bot, User, Sparkles, Target, Calendar, Lightbulb, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 
 interface Message {
   id: string;
@@ -16,7 +17,6 @@ interface Message {
 
 export const AIChatbox = () => {
   const { toast } = useToast();
-  const userName = "User";
   const scrollRef = useRef<HTMLDivElement>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -28,6 +28,24 @@ export const AIChatbox = () => {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+      setCheckingAuth(false);
+    };
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -38,6 +56,26 @@ export const AIChatbox = () => {
 
   const sendMessage = async () => {
     if (!inputMessage.trim() || isTyping) return;
+
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in Required",
+        description: "Please sign in to chat with Tracky.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate message length
+    const trimmedMessage = inputMessage.trim();
+    if (trimmedMessage.length > 4000) {
+      toast({
+        title: "Message Too Long",
+        description: "Please keep your message under 4000 characters.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -221,24 +259,37 @@ export const AIChatbox = () => {
             ))}
           </div>
           
-          {/* Input */}
-          <div className="flex gap-2 mt-auto">
-            <Input
-              placeholder="Talk to Tracky..."
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !isTyping && sendMessage()}
-              className="flex-1 bg-surface/50 border-glass-border"
-              disabled={isTyping}
-            />
-            <Button 
-              onClick={sendMessage}
-              disabled={!inputMessage.trim() || isTyping}
-              className="bg-gradient-primary hover:glow-primary transition-all duration-smooth"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
+          {/* Auth prompt or Input */}
+          {!checkingAuth && !isAuthenticated ? (
+            <div className="mt-auto p-4 glass rounded-lg border border-glass-border text-center">
+              <p className="text-muted-foreground mb-3">Sign in to chat with Tracky</p>
+              <Link to="/auth">
+                <Button className="bg-gradient-primary hover:glow-primary">
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Sign In
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="flex gap-2 mt-auto">
+              <Input
+                placeholder="Talk to Tracky..."
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && !isTyping && sendMessage()}
+                className="flex-1 bg-surface/50 border-glass-border"
+                disabled={isTyping || checkingAuth}
+                maxLength={4000}
+              />
+              <Button 
+                onClick={sendMessage}
+                disabled={!inputMessage.trim() || isTyping || checkingAuth}
+                className="bg-gradient-primary hover:glow-primary transition-all duration-smooth"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

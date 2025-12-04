@@ -6,6 +6,39 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation
+const MAX_MESSAGES = 50;
+const MAX_MESSAGE_LENGTH = 4000;
+
+function validateMessages(messages: unknown): { valid: boolean; error?: string } {
+  if (!Array.isArray(messages)) {
+    return { valid: false, error: 'Messages must be an array' };
+  }
+  if (messages.length === 0) {
+    return { valid: false, error: 'Messages array cannot be empty' };
+  }
+  if (messages.length > MAX_MESSAGES) {
+    return { valid: false, error: `Maximum ${MAX_MESSAGES} messages allowed` };
+  }
+  
+  for (const msg of messages) {
+    if (typeof msg !== 'object' || msg === null) {
+      return { valid: false, error: 'Each message must be an object' };
+    }
+    if (!['user', 'assistant'].includes(msg.role)) {
+      return { valid: false, error: 'Message role must be "user" or "assistant"' };
+    }
+    if (typeof msg.content !== 'string') {
+      return { valid: false, error: 'Message content must be a string' };
+    }
+    if (msg.content.length > MAX_MESSAGE_LENGTH) {
+      return { valid: false, error: `Message content cannot exceed ${MAX_MESSAGE_LENGTH} characters` };
+    }
+  }
+  
+  return { valid: true };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -14,6 +47,16 @@ serve(async (req) => {
 
   try {
     const { messages } = await req.json();
+    
+    // Validate input
+    const validation = validateMessages(messages);
+    if (!validation.valid) {
+      return new Response(
+        JSON.stringify({ error: validation.error }), 
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
