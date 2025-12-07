@@ -126,41 +126,30 @@ const Auth = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-surface to-surface-elevated p-4">
         <Card className="w-full max-w-sm border-0 shadow-lg">
           <CardHeader className="space-y-2 text-center pb-4">
-            <CardTitle className="text-2xl">Verify Code</CardTitle>
+            <div className="flex justify-center mb-2">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Mail className="h-6 w-6 text-primary" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl">Check Your Email</CardTitle>
             <CardDescription>
-              Enter the code sent to {email}
+              We sent a login link to <span className="font-medium text-foreground">{email}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="flex justify-center">
-              <InputOTP maxLength={6} value={otp} onChange={setOtp}>
-                <InputOTPGroup>
-                  <InputOTPSlot index={0} />
-                  <InputOTPSlot index={1} />
-                  <InputOTPSlot index={2} />
-                  <InputOTPSlot index={3} />
-                  <InputOTPSlot index={4} />
-                  <InputOTPSlot index={5} />
-                </InputOTPGroup>
-              </InputOTP>
+            <div className="text-center text-sm text-muted-foreground">
+              <p>Click the link in your email to sign in.</p>
+              <p className="mt-2">You can close this page after clicking the link.</p>
             </div>
-            
-            <Button
-              onClick={handleVerifyOTP}
-              disabled={loading || otp.length !== 6}
-              className="w-full"
-            >
-              {loading ? "Verifying..." : "Verify"}
-            </Button>
 
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-2 pt-4 border-t border-border">
               <Button
-                variant="link"
+                variant="outline"
                 onClick={handleResendOTP}
                 disabled={loading}
-                className="text-sm"
+                className="w-full"
               >
-                Resend code
+                {loading ? "Sending..." : "Resend Email"}
               </Button>
               <Button
                 variant="link"
@@ -169,9 +158,9 @@ const Auth = () => {
                   setOtp("");
                 }}
                 disabled={loading}
-                className="text-sm block mx-auto"
+                className="text-sm"
               >
-                Change email
+                Use a different email
               </Button>
             </div>
           </CardContent>
