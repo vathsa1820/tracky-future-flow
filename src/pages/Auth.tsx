@@ -134,25 +134,41 @@ const Auth = () => {
                 <Mail className="h-6 w-6 text-primary" />
               </div>
             </div>
-            <CardTitle className="text-2xl">Check Your Email</CardTitle>
+            <CardTitle className="text-2xl">Enter Code</CardTitle>
             <CardDescription>
-              We sent a login link to <span className="font-medium text-foreground">{email}</span>
+              Enter the 6-digit code sent to <span className="font-medium text-foreground">{email}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="text-center text-sm text-muted-foreground">
-              <p>Click the link in your email to sign in.</p>
-              <p className="mt-2">You can close this page after clicking the link.</p>
+            <div className="flex justify-center">
+              <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
             </div>
+            
+            <Button
+              onClick={handleVerifyOTP}
+              disabled={loading || otp.length !== 6}
+              className="w-full"
+            >
+              {loading ? "Verifying..." : "Verify"}
+            </Button>
 
             <div className="text-center space-y-2 pt-4 border-t border-border">
               <Button
-                variant="outline"
+                variant="link"
                 onClick={handleResendOTP}
                 disabled={loading}
-                className="w-full"
+                className="text-sm"
               >
-                {loading ? "Sending..." : "Resend Email"}
+                Resend code
               </Button>
               <Button
                 variant="link"
@@ -161,7 +177,7 @@ const Auth = () => {
                   setOtp("");
                 }}
                 disabled={loading}
-                className="text-sm"
+                className="text-sm block mx-auto"
               >
                 Use a different email
               </Button>
