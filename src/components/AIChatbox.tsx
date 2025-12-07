@@ -33,15 +33,18 @@ export const AIChatbox = () => {
 
   // Check authentication status
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, !!session);
       setIsAuthenticated(!!session);
       setCheckingAuth(false);
-    };
-    checkAuth();
+    });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', !!session);
       setIsAuthenticated(!!session);
+      setCheckingAuth(false);
     });
 
     return () => subscription.unsubscribe();
